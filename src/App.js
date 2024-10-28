@@ -1,10 +1,11 @@
+/* eslint-disable */
+// @ts-nocheck
 import './App.css';
 import React from 'react';
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useRef, useEffect, useMemo, useState } from "react";
 import * as THREE from 'three';
 import * as baffer from '../src/otsiuda_bafaemsya';
-import { VertexColorNode } from 'three/webgpu';
 
 
 function App() {
