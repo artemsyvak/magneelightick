@@ -1,7 +1,11 @@
 import './App.css';
+import React from 'react';
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Line, Plane } from "@react-three/drei";
-import { useState, useEffect } from 'react';
+import { useRef, useEffect, useMemo, useState } from "react";
+import * as THREE from 'three';
+import * as baffer from '../src/otsiuda_bafaemsya';
+import { VertexColorNode } from 'three/webgpu';
+
 
 function App() {
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
@@ -15,7 +19,7 @@ function App() {
   const yak_zavysoko_zaplutalo = 42;
 
   const standart_goyana = 15;
-  const rozmir_banochky = 1 / yak_zashyroko_zaplutalo * standart_goyana;
+  const rozmir_banochky = standart_goyana / yak_zashyroko_zaplutalo;
 
   const naskilki_zadulo_z_vikna = Math.floor(yak_zashyroko_zaplutalo / 2) * rozmir_banochky;
   const naskilki_zahotilosya_chhnuty = Math.floor(yak_zavysoko_zaplutalo / 2) * rozmir_banochky;
@@ -52,12 +56,35 @@ function App() {
     de_ya_opuskavsya: Number.MAX_SAFE_INTEGER
   }
 
-  const startovyi_cellchik = {
+  const startovi_cellchiki = [{
+  //   ...cell_gridosika,
+  //   de_ya_vbik: 0,
+  //   de_ya_vglyb: 0,
+  //   stepchiki_suda: 0,
+  // }
+  //,{
+  //   ...cell_gridosika,
+  //   de_ya_vbik: yak_zashyroko_zaplutalo - 1,
+  //   de_ya_vglyb: 0,
+  //   stepchiki_suda: 0,
+  // }
+  //,{
+  //   ...cell_gridosika,
+  //   de_ya_vbik: 0,
+  //   de_ya_vglyb: yak_zavysoko_zaplutalo - 1,
+  //   stepchiki_suda: 0,
+  // }
+  //,{
+  //   ...cell_gridosika,
+  //   de_ya_vbik: yak_zashyroko_zaplutalo - 1,
+  //   de_ya_vglyb: yak_zavysoko_zaplutalo - 1,
+  //   stepchiki_suda: 0,
+  // }
     ...cell_gridosika,
     de_ya_vbik: Math.floor(yak_zashyroko_zaplutalo / 2),
     de_ya_vglyb: 0,
     stepchiki_suda: 0,
-  }
+  }]
 
   let cellchik_kuda_zalaitsorsil = {
     ...cell_gridosika,
@@ -66,7 +93,6 @@ function App() {
   }
 
   useEffect(() => {
-    debugger
     if (gridosik.length)
       return;
 
@@ -106,12 +132,14 @@ function App() {
 
     set_metki_peremetki(malyarskie_metki_dostaem_s_karmana())
 
-    gridosik[startovyi_cellchik.de_ya_vglyb][startovyi_cellchik.de_ya_vbik].stepchiki_suda = startovyi_cellchik.stepchiki_suda;
-    posylaem_magneelightniy_signalchik([startovyi_cellchik]);
+    startovi_cellchiki.forEach(cellchik => {
+      gridosik[cellchik.de_ya_vglyb][cellchik.de_ya_vbik].stepchiki_suda = cellchik.stepchiki_suda;
+    });
+    posylaem_magneelightniy_signalchik(startovi_cellchiki);
 
     set_razgadali_malyameizik(gridosik);
     renderKarobochki()
-  }, [chy_blyskae])
+  }, [])
 
   useEffect(() => {
     const handleKeyPress = (event) => {
@@ -203,6 +231,7 @@ function App() {
 
   }
 
+  //#region malyarskie_metki_dostaem_s_karmana
 
   const malyarskie_metki_dostaem_s_karmana = () => {
     const metki = []
@@ -249,6 +278,8 @@ function App() {
     return metki;
   }
 
+//#endregion
+
   function poshalil_s_kostyami(gridosichnyi_array, count = 0) {
     if (!count)
       return [];
@@ -270,24 +301,176 @@ function App() {
   // let metki_peremetki = malyarskie_metki_dostaem_s_karmana();
   // metki_peremetki = poshalil_s_kostyami(metki_peremetki, metki_peremetki.length);
 
+  // const renderKarobochki = () => {
+  //   Array.from({ length: zaraz_blymne ? cellchik_kuda_zalaitsorsil.stepchiki_suda + 1:
+  //     Math.max(...gridosik.map(rowchik => 
+  //       Math.max(...rowchik.map(cellik => cellik.stepchiki_suda)))) + 1 + kuda_podnyalosya_tsunami
+  //   }, 
+  //     (_, i) => i).map((_, stepchik_suda) => {
+  //     const timeout = setTimeout(() => {       
+  //       const pidsvicheni_cellchiky = gridosik.flatMap(rowchik =>
+  //         rowchik.filter(cellik =>
+  //           cellik.stepchiki_suda >= Math.max(0, stepchik_suda - kuda_podnyalosya_tsunami) &&
+  //           cellik.stepchiki_suda <= stepchik_suda
+  //         ));
+
+  //       pidsvicheni_cellchiky.push(stepchik_suda);
+  //       set_pidsvicheni_celly(pidsvicheni_cellchiky);
+  //     }, stepchik_suda * 50)
+  //     return () => clearTimeout(timeout);
+  //   })
+    
+  // }
+  
   const renderKarobochki = () => {
-    Array.from({ length: zaraz_blymne ? cellchik_kuda_zalaitsorsil.stepchiki_suda + 1:
+    const arraychik = Array.from({ length: zaraz_blymne ? cellchik_kuda_zalaitsorsil.stepchiki_suda + 1:
       Math.max(...gridosik.map(rowchik => 
         Math.max(...rowchik.map(cellik => cellik.stepchiki_suda)))) + 1 + kuda_podnyalosya_tsunami
     }, 
       (_, i) => i).map((_, stepchik_suda) => {
-
-      setTimeout(() => {       
         const pidsvicheni_cellchiky = gridosik.flatMap(rowchik =>
           rowchik.filter(cellik =>
-            cellik.stepchiki_suda >= Math.max(0,stepchik_suda - kuda_podnyalosya_tsunami) &&
+            cellik.stepchiki_suda >= Math.max(0, stepchik_suda - kuda_podnyalosya_tsunami) &&
             cellik.stepchiki_suda <= stepchik_suda
           ));
 
         pidsvicheni_cellchiky.push(stepchik_suda);
-        set_pidsvicheni_celly(pidsvicheni_cellchiky);
-      }, stepchik_suda * 100)
+        return pidsvicheni_cellchiky;
     })
+    let itik = 0;
+    const interval = setInterval(() => {
+      set_pidsvicheni_celly(arraychik[itik++]);
+    }, 50);
+    return () => clearInterval(interval);
+  }
+
+  const naskolko_banochka_ushla = (pidsvicheni_cell, potochnyi_stepchik) => {
+    const yak_davno_banchylasya = potochnyi_stepchik - pidsvicheni_cell.stepchiki_suda;
+
+    const naskolko_banochka_uhodit = 1 / kuda_podnyalosya_tsunami;
+    const naskolko_uzhe_ushla = yak_davno_banchylasya * naskolko_banochka_uhodit;
+
+    return naskolko_uzhe_ushla;
+  }
+
+  function hexToFloat32Array(hex, opacity = 1.0) {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    return new Float32Array([r, g, b, opacity]);
+  }
+
+  function MergedKarobochkiGeometry({ pidsvicheni_celly, rozmir_banochky }) {
+    const geometryRef = useRef();
+
+    const na_yakiy_zaraz_banochci = pidsvicheni_celly && pidsvicheni_celly.at(-1);
+  
+    // Create merged geometry
+    const mergedGeometry = useMemo(() => {
+      if (!pidsvicheni_celly || !pidsvicheni_celly.length) return [];
+      pidsvicheni_celly = pidsvicheni_celly.filter((_, index) => index !== pidsvicheni_celly.length - 1);
+      const geometries = pidsvicheni_celly.map(cell => {
+        const geometry = new THREE.BufferGeometry();
+        const vertices = new Float32Array([
+          cell.tochki_na_celle.liva_nyzhnya[0], cell.tochki_na_celle.liva_nyzhnya[1], 0,
+          cell.tochki_na_celle.liva_nyzhnya[0] + rozmir_banochky, cell.tochki_na_celle.liva_nyzhnya[1], 0,
+          cell.tochki_na_celle.liva_nyzhnya[0] + rozmir_banochky, cell.tochki_na_celle.liva_nyzhnya[1] + rozmir_banochky, 0,
+          cell.tochki_na_celle.liva_nyzhnya[0], cell.tochki_na_celle.liva_nyzhnya[1] + rozmir_banochky, 0
+        ]);
+        geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        // Add color attribute
+        // const colors = new Float32Array([
+        //   1, 0, 0, 0, // Red
+        //   0, 1, 0, 0, // Green
+        //   0, 0, 1, 1, // Blue
+        //   1, 1, 0, 1  // Yellow
+        // ]);
+        
+        // Add color attribute with specified opacity
+        const color = hexToFloat32Array("#B5EAD7", 1 - naskolko_banochka_ushla(cell, na_yakiy_zaraz_banochci));
+        const colors = new Float32Array([
+          ...color, ...color, ...color, ...color // Same color for all vertices
+        ]);
+
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 4));
+        geometry.setIndex([0, 1, 2, 0, 2, 3]);
+        return geometry;
+      });
+  
+      
+      return baffer.mergeBufferGeometries(geometries);
+    }, [pidsvicheni_celly, rozmir_banochky]);
+  
+    return (!pidsvicheni_celly || !pidsvicheni_celly.length ? null :
+      <mesh geometry={mergedGeometry} ref={geometryRef}>
+      <meshBasicMaterial attach="material" vertexColors transparent opacity={0.5}/>
+      </mesh>
+    );
+  }
+
+  const merged_lain_geometry = useMemo(() => {
+    return (
+      <MergedLainGeometry  metki_peremetki={metki_peremetki}/>
+    )
+  }, [metki_peremetki])
+
+  function MergedLainGeometry({ metki_peremetki }) {
+    const geometryRef = useRef();
+    const [progress, setProgress] = useState(0);
+    const [mergedGeometry, setMergedGeometry] = useState(new THREE.BufferGeometry());
+  
+    const stepchik_animeita = 0.003;
+  
+    console.log(progress);
+    useFrame(() => {
+      if (!metki_peremetki.length) return;
+
+      if (progress + stepchik_animeita <= 1) {
+        setProgress(progress + stepchik_animeita);
+      }
+
+      // console.log(progress)
+      const geometries = metki_peremetki.map(metka => {
+        const geometry = new THREE.BufferGeometry();
+        const currentPointik = {
+          x: metka[0][0],
+          y: metka[0][1],
+          z: metka[0][2]
+        };
+        const nextPointik = {
+          x: metka[1][0],
+          y: metka[1][1],
+          z: metka[1][2]
+        };
+    
+        const interpolizuvali_points = [
+          [
+            currentPointik.x,
+            currentPointik.y,
+            currentPointik.z
+          ],
+          [
+            currentPointik.x + (nextPointik.x - currentPointik.x) * progress,
+            currentPointik.y + (nextPointik.y - currentPointik.y) * progress,
+            currentPointik.z + (nextPointik.z - currentPointik.z) * progress,
+          ]
+        ];
+    
+        const positions = new Float32Array([...interpolizuvali_points[0], ...interpolizuvali_points[1]]);
+    
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        return geometry;
+      });
+  
+      const merged = baffer.mergeBufferGeometries(geometries);
+      setMergedGeometry(merged);
+    });
+
+    return (!metki_peremetki.length || !mergedGeometry.attributes.position || !mergedGeometry.attributes.position.count ? null :
+      <lineSegments geometry={mergedGeometry} ref={geometryRef}>
+        <lineBasicMaterial attach="material" color="#696969" />
+      </lineSegments>
+    );
   }
 
   return (
@@ -300,13 +483,17 @@ function App() {
       >
         <ambientLight />
         <pointLight position={[10, 10, 10]} />
-        {
+        {/* {
           metki_peremetki.map((metka, index) => (
             <AnimatedLine key={index} points={metka} delay={zaderzhymsya_nenadolgo(index / metki_peremetki.length * koef_otvlecheniy_ot_razvlecheniy)} />
           ))
-        }
+        }  */}
 
-        {
+        {/* <MergedLainGeometry metki_peremetki={metki_peremetki} /> */}
+        {merged_lain_geometry}
+        <MergedKarobochkiGeometry pidsvicheni_celly={pidsvicheni_celly} rozmir_banochky={rozmir_banochky} />
+        
+        {/* {
           pidsvicheni_celly.map((pidsvicheni_cell, index) => {
             if (index === pidsvicheni_celly.length - 1) {
               return
@@ -317,11 +504,11 @@ function App() {
                 position={[pidsvicheni_cell.tochki_na_celle.liva_nyzhnya[0] + rozmir_banochky / 2, pidsvicheni_cell.tochki_na_celle.liva_nyzhnya[1] + rozmir_banochky / 2, 0]}
                 args={[rozmir_banochky, rozmir_banochky]}               
                 color='#B5EAD7'
-                opacity={1 - ((pidsvicheni_celly[pidsvicheni_celly.length - 1] - pidsvicheni_cell.stepchiki_suda) * (1 / kuda_podnyalosya_tsunami))}
+                opacity={1 - naskolko_banochka_ushla(pidsvicheni_cell, pidsvicheni_celly.at(-1))}
               />
             )
           })
-        }
+        } */}
       </Canvas>
     </div>
   )
@@ -332,23 +519,32 @@ function AnimatedPlane({ position, args, color, opacity }) {
   const stepchik_animeita = 1;
   const [vertaemsya_nazad, set_vertaemsya_nazad] = useState(false)
 
-  const animatedOpacity = progress;
-
   return (
-    <Plane position={position} args={args}>
-      <meshStandardMaterial attach="material" color={color} transparent opacity={opacity} />
-    </Plane>
+    <mesh position={position}>
+      <planeGeometry args={[...args, 10, 10]} />
+      <meshStandardMaterial color={color} side={THREE.FrontSide} transparent opacity={opacity}/>
+    </mesh>
   );
+
+  // return (
+  //   <Plane position={position} args={args}>
+  //     <meshStandardMaterial attach="material" color={color} transparent opacity={opacity} />
+  //   </Plane>
+  // );
 }
 
-function AnimatedLine({ points, delay }) {
+
+export function AnimatedLine({ points, delay, color = '#696969' }) {
+  const geometryRef = useRef();
   const [progress, setProgress] = useState(0);
   const [start, setStart] = useState(false);
+
+  const initialPositions = new Float32Array([...points[0], ...points[1]]);
   const stepchik_animeita = Math.random() * (0.05 - 0.005) + 0.005;
 
   useEffect(() => {
     // const delay = Math.random() * 2000; // Random delay between 0 and 2000 ms
-    const timeout = setTimeout(() => setStart(true), delay);
+    const timeout = setTimeout(() => setStart(true), 0);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -356,9 +552,7 @@ function AnimatedLine({ points, delay }) {
     if (start && progress + stepchik_animeita <= 1) {
       setProgress(progress + stepchik_animeita);
     }
-  });
 
-  const interpolatedPoints = () => {
     const currentPointik = {
       x: points[0][0],
       y: points[0][1],
@@ -370,7 +564,7 @@ function AnimatedLine({ points, delay }) {
       z: points[1][2]
     };
 
-    return [
+    const interpolizuvali_points = [
       [
         currentPointik.x,
         currentPointik.y,
@@ -380,16 +574,34 @@ function AnimatedLine({ points, delay }) {
         currentPointik.x + (nextPointik.x - currentPointik.x) * progress,
         currentPointik.y + (nextPointik.y - currentPointik.y) * progress,
         currentPointik.z + (nextPointik.z - currentPointik.z) * progress,
-      ]];
-  };
+      ]
+    ];
+
+    const positions = new Float32Array([...interpolizuvali_points[0], ...interpolizuvali_points[1]]);
+
+    if (geometryRef.current) {
+      geometryRef.current.setAttribute(
+          "position",
+          new THREE.BufferAttribute(positions, 3)
+      );
+      geometryRef.current.attributes.position.needsUpdate = true; // Notify Three.js that the geometry has changed
+    }
+  });
+
+  
 
   return (
-    <Line
-      points={interpolatedPoints()}
-      color={'#696969'}
-      lineWidth={2}
-      dashed={false}
-    />
+    <line>
+      <bufferGeometry ref={geometryRef} attach="geometry">
+        <bufferAttribute
+          attach="attributes-position"
+          count={initialPositions.length / 3}   // Number of vertices (2)
+          array={initialPositions}              // The initial positions array
+          itemSize={3}                          // Each vertex has 3 components (x, y, z)
+        />
+      </bufferGeometry>
+      <lineBasicMaterial attach="material" dashed={false} lineWidth={500} color={color} />
+    </line>
   );
 }
 
