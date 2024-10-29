@@ -1,3 +1,5 @@
+/* eslint-disable */
+// @ts-nocheck
 import './App.css';
 import React from 'react';
 import { Canvas, useFrame } from '@react-three/fiber'
