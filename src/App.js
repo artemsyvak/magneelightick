@@ -11,11 +11,13 @@ import * as baffer from '../src/otsiuda_bafaemsya';
 function App() {
   const [metki_peremetki, set_metki_peremetki] = useState([])
   const [pidsvicheni_celly, set_pidsvicheni_celly] = useState([])
-  const [chy_blyskae, set_chy_blyskae] = useState(false);
+  const [shukau_shlyah_dodomu_po_ostatkah_goinosti, set_shukau_shlyah_dodomu_po_ostatkah_goinosti] = useState([])
+  const [chy_blyskae, set_chy_blyskae] = useState(true);
+  const [hovaisya_bo_blyskae, set_hovaisya_bo_blyskae] = useState(false);
 
   const teritoriya_putannya = {
-    yak_zashyroko_zaplutalo: 42,
-    yak_zavysoko_zaplutalo: 42
+    yak_zashyroko_zaplutalo: 63,
+    yak_zavysoko_zaplutalo: 63
   }
 
   const standart_goyana = 15;
@@ -30,7 +32,7 @@ function App() {
 
   const kuda_podnyalosya_tsunami = 7;
 
-  const koef_otvlecheniy_ot_razvlecheniy = 80;
+  const koef_otvlecheniy_ot_razvlecheniy = 60;
   const bystrota_vospominaniy = teritoriya_putannya.yak_zavysoko_zaplutalo * koef_otvlecheniy_ot_razvlecheniy;
 
   const lainovi_nastroiki = {
@@ -41,6 +43,12 @@ function App() {
   const korobochni_nastroiki = {
     kolir: "#B5EAD7",
     general_opacity: 0.55
+  };
+
+  const grozovi_nastroiki = {
+    kolir: "#B5EAD7",
+    general_opacity: 0.55,
+    koef_startovogo_zaryada: 0.25
   };
 
   let zaraz_blymne = false;
@@ -85,6 +93,7 @@ function App() {
 
     zanimaem_malyarski_positions();
     posylaem_magneelightniy_signalchik(startovi_cellchiki);
+    napominaem_sebe_o_goryachei_goynosti();
 
     prygadaemo_yak_banchyly_i_pokazhem_na_stini();
   }, [])
@@ -183,13 +192,12 @@ function App() {
   }
 
   const posylaem_magneelightniy_signalchik = (current_cellchiky) => {
-    for (let i = 0; i < current_cellchiky.length; i++) {
+    for (let i = 0; i < current_cellchiky.length && !zaraz_blymne; i++) {
       const current_cellchik = gridosik[current_cellchiky[i].de_ya_vglyb][current_cellchiky[i].de_ya_vbik];
 
       if (current_cellchik.de_ya_vglyb == teritoriya_putannya.yak_zavysoko_zaplutalo - 1) {
         if (chy_blyskae) {
-          cellchik_kuda_zalaitsorsil = current_cellchik;
-          current_cellchiky = [];
+          cellchik_kuda_zalaitsorsil.stepchiki_suda < 0 && (cellchik_kuda_zalaitsorsil = current_cellchik);
           zaraz_blymne = true;
 
           return;
@@ -229,6 +237,22 @@ function App() {
     }
   }
   
+  const napominaem_sebe_o_goryachei_goynosti = () => {
+    const momenty_vid_yakyh_prypikalo = [cellchik_kuda_zalaitsorsil];
+    const razglazhenyi_gridosik = gridosik.flat();
+
+    for (let i = 0; momenty_vid_yakyh_prypikalo.at(0).stepchiki_suda > 0;) {
+      const goryachiy_moment_iz_proshlogo = momenty_vid_yakyh_prypikalo.at(i);
+      const kak_ya_zdes_okazalsya = razglazhenyi_gridosik.find(cellchik =>
+        cellchik.de_ya_vbik == goryachiy_moment_iz_proshlogo.de_ya_zboku_buv && 
+        cellchik.de_ya_vglyb == goryachiy_moment_iz_proshlogo.de_ya_opuskavsya);
+
+      momenty_vid_yakyh_prypikalo.unshift(kak_ya_zdes_okazalsya);
+    }
+    
+    set_shukau_shlyah_dodomu_po_ostatkah_goinosti([...momenty_vid_yakyh_prypikalo]);
+  }
+  
 
 
   const prygadaemo_yak_banchyly_i_pokazhem_na_stini = () => {
@@ -243,22 +267,34 @@ function App() {
       return pidsvicheni_cellchiky;
     })
 
+    zaraz_blymne && vsi_malyarski_banochki_rozstavleni_po_svoih_miscyah.push([]);
+
     vsi_malyarski_banochki_rozstavleni_po_svoih_miscyah.forEach((pidsvicheni_cellchiky, index) => {
       const perekurchik_i_pobig_dalshe_malyareivit = setTimeout(() => {
         set_pidsvicheni_celly(pidsvicheni_cellchiky);
       }, bystrota_vospominaniy * index / vsi_malyarski_banochki_rozstavleni_po_svoih_miscyah.length);
       return () => clearTimeout(perekurchik_i_pobig_dalshe_malyareivit);
     })
+
+    if (chy_blyskae)
+    {
+      const ubirayus_poka_ne_spalilsya_ot_zhara = setTimeout(() => {
+        set_hovaisya_bo_blyskae(true);
+      }, bystrota_vospominaniy);
+      return () => clearTimeout(ubirayus_poka_ne_spalilsya_ot_zhara);
+    }
   }
 
-  const naskolko_banochka_ushla = (pidsvicheni_cell, potochnyi_stepchik) => {
+  const naskolko_banochka_ushla = (pidsvicheni_cell, potochnyi_stepchik, ne_po_tsunami_a_po_groze = false) => {
     const yak_davno_banchylasya = potochnyi_stepchik - pidsvicheni_cell.stepchiki_suda;
 
-    const naskolko_banochka_uhodit = 1 / kuda_podnyalosya_tsunami;
+    const naskolko_banochka_uhodit = ne_po_tsunami_a_po_groze ? ((1 - grozovi_nastroiki.koef_startovogo_zaryada) / potochnyi_stepchik) : (1 / kuda_podnyalosya_tsunami);
     const naskolko_uzhe_ushla = yak_davno_banchylasya * naskolko_banochka_uhodit;
 
     return naskolko_uzhe_ushla;
   }
+
+
 
   const Korobochki_z_podgonchikom_dlya_malyareiverskogo_sumashestviya = ({ pidsvicheni_celly }) => {
     const z_heksa_na_erdzhibi = (hex) => {
@@ -348,6 +384,50 @@ function App() {
     );
   }
 
+  const Protysnulys_do_malyareivchika_i_blyskavychno_atzhygaem = ({ hovaisya_bo_blyskae }) => {
+    const z_heksa_na_erdzhibi = (hex) => {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+  
+      return [r, g, b];
+    }
+
+    const karobochnyi_material = z_heksa_na_erdzhibi(grozovi_nastroiki.kolir);
+    const nagadalysya_za_banochku = shukau_shlyah_dodomu_po_ostatkah_goinosti && shukau_shlyah_dodomu_po_ostatkah_goinosti.length;
+  
+    const odna_sutsilna_hapka = useMemo(() => {
+      if (!nagadalysya_za_banochku) return;
+
+      const dzheometriiisy = shukau_shlyah_dodomu_po_ostatkah_goinosti.map(cell => { 
+        const dzheometriii = new THREE.BufferGeometry();
+        const dyryavim_tochki_dlya_baniury = new Float32Array([
+          ...cell.tochki_na_celle.liva_nyzhnya, 
+          ...cell.tochki_na_celle.prava_nyzhnya,
+          ...cell.tochki_na_celle.prava_verhnya,
+          ...cell.tochki_na_celle.liva_verhnya
+        ]);
+
+        const naskolko_banka_prosvietilasya = 1 - naskolko_banochka_ushla(cell, shukau_shlyah_dodomu_po_ostatkah_goinosti.at(-1).stepchiki_suda, true);
+        const kraska_malyara = [...karobochnyi_material, naskolko_banka_prosvietilasya];
+
+        dzheometriii.setAttribute('position', new THREE.BufferAttribute(dyryavim_tochki_dlya_baniury, 3));
+        dzheometriii.setAttribute('color', new THREE.BufferAttribute(new Float32Array([...kraska_malyara, ...kraska_malyara, ...kraska_malyara, ...kraska_malyara]), kraska_malyara.length));
+        dzheometriii.setIndex([0, 1, 2, 0, 2, 3]);
+
+        return dzheometriii;
+      });
+  
+      return baffer.mergeBufferGeometries(dzheometriiisy);
+    }, [hovaisya_bo_blyskae]);
+  
+    return (nagadalysya_za_banochku && hovaisya_bo_blyskae &&
+      <mesh geometry={odna_sutsilna_hapka}>
+        <meshBasicMaterial attach="material" vertexColors transparent opacity={grozovi_nastroiki.general_opacity}/>
+      </mesh>
+    );
+  }
+
   return (
     <div id="canvas-container">
       <Canvas
@@ -360,7 +440,9 @@ function App() {
         <pointLight position={[10, 10, 10]} />
 
         {useMemo(() => <Korobochki_z_podgonchikom_dlya_malyareiverskogo_sumashestviya pidsvicheni_celly={pidsvicheni_celly}/>, [pidsvicheni_celly])} 
-        {useMemo(() => <Shlyah_na_malyareivchik_zaplutanyi_ale_mozhna_protysnutys metki_peremetki={metki_peremetki}/>, [metki_peremetki])} 
+        {useMemo(() => <Shlyah_na_malyareivchik_zaplutanyi_ale_mozhna_protysnutys metki_peremetki={metki_peremetki}/>, [metki_peremetki])}
+        {useMemo(() => <Protysnulys_do_malyareivchika_i_blyskavychno_atzhygaem hovaisya_bo_blyskae={hovaisya_bo_blyskae}/>, [hovaisya_bo_blyskae])} 
+
       </Canvas>
     </div>
   )
